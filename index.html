@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pairly | Connect with Everything</title>
+    <script src="https://cdn.jsdelivr.net"></script>
+    <style>
+        :root { --p-v: #6366f1; --bg: #dae0e6; --card: #ffffff; --text: #1c1c1c; --meta: #787c7e; --border: #ccc; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); }
+        header { background: var(--card); padding: 10px 40px; display: flex; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .logo { font-size: 24px; font-weight: 900; color: var(--p-v); text-decoration: none; font-style: italic; letter-spacing: -1px; }
+        .container { max-width: 640px; margin: 20px auto; padding: 0 10px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 15px; margin-bottom: 15px; }
+        .input-box { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #edeff1; background: #f6f7f8; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        .btn { padding: 10px; background: var(--p-v); color: white; border: none; border-radius: 20px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn:hover { background: #4f46e5; }
+        .post { background: var(--card); border: 1px solid var(--border); border-radius: 4px; display: flex; margin-bottom: 10px; cursor: pointer; transition: 0.1s; }
+        .post:hover { border-color: #898989; }
+        .votes { background: rgba(0,0,0,0.02); width: 40px; padding: 10px 0; text-align: center; font-weight: bold; }
+        .content { padding: 12px; flex: 1; min-width: 0; }
+        .title { font-size: 18px; font-weight: 600; margin: 5px 0; line-height: 1.2; }
+        .meta { font-size: 12px; color: var(--meta); margin-bottom: 8px; }
+        .body-preview { font-size: 14px; color: #333; line-height: 1.5; overflow: hidden; max-height: 150px; }
+        .body-preview img { max-width: 100%; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="#" class="logo" onclick="location.reload()">Pairly</a>
+    <div id="token-status" style="margin-left:auto; font-size:10px; color:var(--meta);">Token: 未設定</div>
+</header>
+
+<div class="container">
+    <div class="card">
+        <h3 style="margin:0 0 10px 0; font-size:16px;">Pairly に新しく投稿</h3>
+        <input type="text" id="p-title" class="input-box" placeholder="タイトル...">
+        <textarea id="p-body" class="input-box" style="height:100px;" placeholder="本文 (Markdown/画像を貼ることも可能)"></textarea>
+        <button onclick="submitPost()" class="btn">🚀 投稿する</button>
+        <button onclick="setToken()" style="background:none; color:var(--meta); border:none; font-size:10px; cursor:pointer; margin-top:10px;">トークンを再設定する</button>
+    </div>
+    <div id="feed"><p style="text-align:center; color:var(--meta);">Loading Feed...</p></div>
+</div>
+
+<script>
+    const REPO = "1o1o4o5o1o4-blip/Odakyu21-";
+    let TOKEN = localStorage.getItem('pairly_token');
+
+    if (!TOKEN) {
+        setToken();
+    } else {
+        updateTokenStatus();
+    }
+
+    function setToken() {
+        const input = prompt("GitHub Personal Access Tokenを入力してください。\n(入力するとブラウザに保存され、制限なしで利用できます)");
+        if (input) {
+            localStorage.setItem('pairly_token', input);
+            TOKEN = input;
+            updateTokenStatus();
+            loadFeed();
+        }
+    }
+
+    function updateTokenStatus() {
+        document.getElementById('token-status').innerText = "Token: 設定済み (API Limit 5000/h)";
+    }
+
+    async function loadFeed() {
+        const headers = TOKEN ? { 'Authorization': `token ${TOKEN}` } : {};
+        try {
+            const res = await fetch(`https://api.github.com{REPO}/issues?state=all&sort=created&_=${Date.now()}`, { headers });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            document.getElementById('feed').innerHTML = data.map(item => `
+                <div class="post" onclick="window.open('${item.html_url}', '_blank')">
+                    <div class="votes">▲<br>${item.comments}</div>
+                    <div class="content">
+                        <div class="meta">u/${item.user.login} • ${new Date(item.created_at).toLocaleDateString()}</div>
+                        <h2 class="title">${item.title}</h2>
+                        <div class="body-preview">${marked.parse(item.body || '')}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            document.getElementById('feed').innerHTML = "⚠️ 読み込みエラー。トークンを確認してください。";
+        }
+    }
+
+    async function submitPost() {
+        if (!TOKEN) return setToken();
+        const title = document.getElementById('p-title').value;
+        const body = document.getElementById('p-body').value;
+        if (!title) return alert("タイトルを入力してください");
+
+        const res = await fetch(`https://api.github.com{REPO}/issues`, {
+            method: 'POST',
+            headers: { 'Authorization': `token ${TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, body })
+        });
+
+        if (res.ok) {
+            alert("Pairlyに投稿されました！");
+            document.getElementById('p-title').value = "";
+            document.getElementById('p-body').value = "";
+            loadFeed();
+        } else {
+            alert("投稿に失敗しました。トークンの権限設定を確認してください。");
+        }
+    }
+    loadFeed();
+</script>
+</body>
+</html>
