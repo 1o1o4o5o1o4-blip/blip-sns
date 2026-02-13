@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pairly | Realtime Chat</title>
+    <script src="https://cdn.jsdelivr.net"></script>
+    <style>
+        :root { --p-v: #6366f1; --bg: #dae0e6; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 550px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 6px solid var(--p-v); box-sizing: border-box; }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: var(--p-v); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
+        .msg { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid var(--p-v); width: 100%; max-width: 550px; box-sizing: border-box; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .msg b { color: var(--p-v); font-size: 0.9em; }
+        .msg p { margin: 5px 0 0; line-height: 1.5; color: #333; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2 style="color:var(--p-v); margin:0 0 15px 0; font-style: italic;">Pairly</h2>
+    <input type="text" id="name" placeholder="あなたの名前">
+    <textarea id="text" placeholder="メッセージを入力..." rows="3"></textarea>
+    <button onclick="send()">送信</button>
+</div>
+
+<div id="feed" style="width:100%; display: flex; flex-direction: column; align-items: center;">
+    <p style="color: #888;">読み込み中...</p>
+</div>
+
+<script>
+    // --- ⚠️ SupabaseのAPI設定をここに貼り付け ⚠️ ---
+    const SB_URL = "https://あなたのプロジェクトURL.supabase.co";
+    const SB_KEY = "あなたのAPIキー(anon public)";
+    
+    const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+
+    // 送信
+    async function send() {
+        const name = document.getElementById('name').value || "名無し";
+        const content = document.getElementById('text').value;
+        if (!content.trim()) return;
+
+        const { error } = await supabase.from('messages').insert([{ name, content }]);
+        if (error) {
+            alert("送信エラー: " + error.message);
+        } else {
+            document.getElementById('text').value = "";
+            load();
+        }
+    }
+
+    // 読み込み（最新20件）
+    async function load() {
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) {
+            document.getElementById('feed').innerHTML = "<p>エラーが発生しました</p>";
+            return;
+        }
+
+        const feed = document.getElementById('feed');
+        feed.innerHTML = data.map(m => `
+            <div class="msg">
+                <b>@${m.name}</b>
+                <p>${m.content.replace(/\n/g, '<br>')}</p>
+            </div>
+        `).join('');
+    }
+
+    // 5秒ごとに自動更新（リアルタイム性）
+    load();
+    setInterval(load, 5000);
+</script>
+
+</body>
+</html>
