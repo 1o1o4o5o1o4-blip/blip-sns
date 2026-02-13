@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pairly | Connect with Everything</title>
+    <!-- マークダウン（装飾）を表示するためのライブラリ -->
+    <script src="https://cdn.jsdelivr.net"></script>
+    <style>
+        :root { --p-v: #6366f1; --bg: #dae0e6; --card: #ffffff; --text: #1c1c1c; --meta: #787c7e; --border: #ccc; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); }
+        header { background: var(--card); padding: 10px 40px; display: flex; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .logo { font-size: 24px; font-weight: 900; color: var(--p-v); text-decoration: none; font-style: italic; letter-spacing: -1px; }
+        .container { max-width: 640px; margin: 20px auto; padding: 0 10px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 15px; margin-bottom: 15px; text-align: center; }
+        .btn { display: block; padding: 12px; background: var(--p-v); color: white; border: none; border-radius: 20px; font-weight: bold; cursor: pointer; text-decoration: none; transition: 0.2s; }
+        .btn:hover { background: #4f46e5; }
+        .post { background: var(--card); border: 1px solid var(--border); border-radius: 4px; display: flex; margin-bottom: 10px; cursor: pointer; text-align: left; }
+        .post:hover { border-color: #898989; }
+        .votes { background: rgba(0,0,0,0.02); width: 40px; padding: 10px 0; text-align: center; font-weight: bold; }
+        .content { padding: 12px; flex: 1; min-width: 0; }
+        .title { font-size: 18px; font-weight: 600; margin: 5px 0; line-height: 1.2; }
+        .meta { font-size: 12px; color: var(--meta); margin-bottom: 8px; }
+        .body-preview { font-size: 14px; color: #333; line-height: 1.5; overflow: hidden; }
+        .body-preview img { max-width: 100%; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="#" class="logo" onclick="location.reload()">Pairly</a>
+</header>
+
+<div class="container">
+    <div class="card">
+        <h3 style="margin:0 0 10px 0; font-size:16px;">Pairly コミュニティへようこそ</h3>
+        <!-- 投稿はGitHubの画面を借りることで「合言葉」を不要にする -->
+        <a href="https://github.com" target="_blank" class="btn">🚀 新しく投稿・写真を貼る</a>
+        <p style="font-size:11px; color:var(--meta); margin-top:10px;">※投稿にはGitHubアカウントが必要です</p>
+    </div>
+    
+    <div id="feed"><p style="text-align:center; color:var(--meta);">最新の投稿を読み込み中...</p></div>
+</div>
+
+<script>
+    // あなたのリポジトリ名
+    const REPO = "1o1o4o5o1o4-blip/blip-sns";
+
+    async function loadFeed() {
+        try {
+            // 公開されている投稿（Issues）を取得
+            const res = await fetch(`https://api.github.com{REPO}/issues?state=all&sort=created&_=${Date.now()}`);
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            
+            const feed = document.getElementById('feed');
+            if (data.length === 0) {
+                feed.innerHTML = "<p style='text-align:center;'>まだ投稿がありません。</p>";
+                return;
+            }
+
+            feed.innerHTML = data.map(item => `
+                <div class="post" onclick="window.open('${item.html_url}', '_blank')">
+                    <div class="votes">▲<br>${item.comments}</div>
+                    <div class="content">
+                        <div class="meta">u/${item.user.login} • ${new Date(item.created_at).toLocaleDateString()}</div>
+                        <h2 class="title">${item.title}</h2>
+                        <div class="body-preview">${marked.parse(item.body || '')}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            document.getElementById('feed').innerHTML = "⚠️ 読み込み制限中です。1分後に再読み込みしてください。";
+        }
+    }
+    loadFeed();
+</script>
+</body>
+</html>
