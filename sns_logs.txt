@@ -1,0 +1,22 @@
+import scratchattach as scratch
+
+# 1. ログイン（自分のアカウント情報）
+session = scratch.login("あなたのユーザー名", "パスワード")
+project_id = "123456789" # あなたのプロジェクトID
+
+# クラウドDBの作成（GitHubで人気の保存形式）
+client = scratch.CloudRequests(session, project_id=project_id)
+
+print("--- 爆速・長文つぶやきサーバー 起動中 ---")
+
+@client.request
+def post_tweet(text):
+    # SNSのつぶやきを受け取って、即座にファイルに保存
+    with open("sns_logs.txt", "a", encoding="utf-8") as f:
+        f.write(f"投稿内容: {text}\n")
+    
+    print(f"【保存完了】: {text}")
+    return "success" # ユーザーに「保存したよ」と返す
+
+# 24時間体制で更新を監視
+client.run()
